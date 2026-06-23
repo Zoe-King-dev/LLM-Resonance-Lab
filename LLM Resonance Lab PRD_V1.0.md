@@ -1,123 +1,583 @@
-# 📄 产品需求文档：AI 模型风格评测软件 (Model Style Evaluator)
+# LLM Resonance Lab V1
 
-| 项目名称 | AI 模型风格评测软件 (Model Style Evaluator) |
-| :--- | :--- |
-| **版本号** | v1.0 |
-| **状态** | 草稿 |
-| **目标用户** | AI 应用开发者、Prompt 工程师、寻求最佳 Agent 模型的个人用户 |
-| **核心目标** | 通过“隔离测试”与“长会话测试”，量化评估不同 LLM 的语言风格、潜台词理解力及长期记忆稳定性。 |
+## Product Overview
 
----
+### Product Name
 
-## 1. 项目背景与目标
-### 1.1 背景
-用户希望从 MiniMax3 和 DeepSeek V4 中选择一个作为长期陪伴型 Agent 的核心模型。用户发现，Benchmark 分数无法反映模型的“人性化”程度。现有的 Agent 平台（如 Coze, Dify）包含过多的 RAG 和插件干扰，无法测试模型的原生能力。
+LLM Resonance Lab
 
-### 1.2 目标
-开发一个轻量级测试工具，实现以下目标：
-1.  **环境隔离**：确保每次测试仅包含 `System Prompt` + `User Prompt`，无历史记忆干扰。
-2.  **长程测试**：支持连续 20 轮以上的多轮对话，测试模型的上下文记忆与人格一致性。
-3.  **量化评分**：提供结构化的评分表，辅助用户决策。
+### Vision
 
----
+当大模型能力逐渐趋同时，人们选择模型的标准将从“谁更聪明”转向“谁更懂我”。
 
-## 2. 功能模块概览
-软件主要包含三个核心模块：
-1.  **题库管理模块**：管理 Markdown 格式的测试用例。
-2.  **测试执行引擎**：
-    *   **A组：隔离测试模式**（单轮，测原生理解与风格）。
-    *   **B组：长会话测试模式**（多轮，测记忆与稳定性）。
-3.  **评测与报告模块**：展示模型回复，并录入评分。
+LLM Resonance Lab 致力于帮助用户发现：
 
----
+* 哪种模型最符合自己的思维方式
+* 哪种模型最容易产生共鸣感
+* 哪种模型最适合作为长期 Agent 核心
 
-## 3. 详细功能需求
+### Product Positioning
 
-### 3.1 题库管理模块
-*   **文件格式支持**：支持导入 `.md` 文件作为题库。
-*   **题库结构定义**：
-    *   系统需识别 Markdown 中的特定标记（如 `## CASE_01`）来分割不同的测试题。
-    *   **隔离测试题**：包含独立的 Prompt。
-    *   **长会话剧本**：包含预设的 20 轮对话脚本（用于自动化测试）或引导式输入（用于人工测试）。
-*   **模型配置**：
-    *   支持配置多个模型的 API Key（如 MiniMax, DeepSeek）。
-    *   支持配置 `System Prompt`（全局统一，确保公平）。
+不是 Benchmark。
 
-### 3.2 A组：隔离测试模式
-*   **核心逻辑**：
-    *   用户选择一道测试题（例如：“面试很难受”）。
-    *   用户选择对比的模型（MiniMax3 vs DeepSeek V4）。
-    *   **关键约束**：程序必须为每一次请求创建一个**全新的 Session ID**。
-    *   **防污染机制**：严禁将上一题的上下文带入本题。
-*   **交互界面**：
-    *   左侧显示题目。
-    *   右侧分栏显示两个模型的回复。
-    *   底部显示评分表（潜台词理解、情绪拿捏、语言自然度等）。
+不是 Arena。
 
-### 3.3 B组：长会话测试模式
-*   **核心逻辑**：
-    *   创建一个独立的、持续的 Session。
-    *   用户与模型进行连续对话（建议 20 轮）。
-    *   **观察点**：模型是否记得 10 轮之前提到的细节？模型的人格是否发生漂移（OOC）？
-*   **功能特性**：
-    *   **上下文可视化**：界面需展示当前的对话历史长度（Token 数）。
-    *   **记忆回溯测试**：用户可随时提问“我刚才提到的那件事是什么？”，验证模型记忆。
+不是排行榜。
 
-### 3.4 评测与报告模块
-*   **评分维度**（根据用户偏好加权）：
-    1.  **潜台词理解 (30%)**：是否读懂了“话里有话”。
-    2.  **长对话体验 (25%)**：是否像真人一样连贯。
-    3.  **中文表达美感 (20%)**：是否有画面感，拒绝翻译腔。
-    4.  **分析能力 (15%)**：逻辑是否清晰。
-    5.  **指令遵循 (10%)**：是否按要求回答。
-*   **最终报告**：生成对比雷达图，直观展示哪个模型更符合用户“长期陪伴”的需求。
+而是：
+
+一个探索人与模型关系的实验室。
 
 ---
 
-## 4. 用户操作流程 (User Flow)
+# Target Users
 
-1.  **准备阶段**：
-    *   用户在设置中填入 MiniMax 和 DeepSeek 的 API Key。
-    *   用户导入预设的 `test_cases.md` 文件。
-2.  **执行 A 组测试（隔离测试）**：
-    *   点击“开始隔离测试”。
-    *   系统加载 Case 1。
-    *   系统分别向 MiniMax 和 DeepSeek 发送请求（独立 Session）。
-    *   系统展示回复，用户打分。
-    *   点击“下一题”，系统**销毁**当前 Session，加载 Case 2。
-3.  **执行 B 组测试（长会话）**：
-    *   点击“开始长会话测试”。
-    *   选择模型 A，开始聊天。聊满 20 轮，记录体验。
-    *   选择模型 B，开始聊天。聊满 20 轮，记录体验。
-4.  **决策阶段**：
-    *   查看总分，选择胜出的模型作为 Agent 核心。
+第一类用户：
 
----
+AI 重度用户
 
-## 5. 非功能性需求
-*   **隐私安全**：所有 API 请求直接由用户本地/私有服务器发往模型厂商，软件不存储任何对话内容。
-*   **低延迟**：由于是流式输出，界面需支持 Typing 效果，减少等待焦虑。
-*   **纯净模式**：软件内部严禁内置任何 RAG、知识库检索或工具调用逻辑，确保测试的是“裸模型”能力。
+例如：
+
+* Agent 开发者
+* Prompt Engineer
+* AI 产品经理
+* 研究人员
+
+第二类用户：
+
+寻找长期 AI Companion 的用户
+
+例如：
+
+* 喜欢长期聊天
+* 进行人生决策讨论
+* 记录思考过程
 
 ---
 
-## 6. 开发建议
-*   **前端**：React 或 Vue（用于构建清晰的分栏对比界面）。
-*   **后端**：Python (FastAPI/Flask) 或 Node.js。
-*   **核心库**：LangChain (仅用于管理 LLM 调用，**禁用**其 Memory 和 Agent 模块) 或直接使用 OpenAI SDK 格式的请求。
+# Design Principles
+
+## Principle 1
+
+Resonance First
+
+优先关注共鸣感。
+
+而非准确率。
 
 ---
 
-### 附录：测试题库示例 (test_cases.md)
-*(此文件将由用户准备，软件负责读取)*
+## Principle 2
+
+Case Isolation
+
+每个 Case 独立测试。
+
+避免上下文污染。
+
+---
+
+## Principle 3
+
+Human Judgment Matters
+
+最终评判者永远是用户。
+
+而不是 AI。
+
+---
+
+## Principle 4
+
+Readable Over Automated
+
+可读性优先于自动化。
+
+---
+
+# V1 Product Scope
+
+采用：
+
+本地运行
+
+CLI + Markdown
+
+不开发前端
+
+不开发数据库
+
+不开发用户系统
+
+---
+
+# Core Features
+
+## Feature 1
+
+Case Library
+
+测试题库系统
+
+---
+
+### Purpose
+
+统一管理所有测试 Case
+
+---
+
+### Directory Structure
+
+cases/
+
+case_001_interview.md
+
+case_002_offer_choice.md
+
+case_003_tech_wave.md
+
+case_004_social_anxiety.md
+
+case_005_writing.md
+
+---
+
+### Case Format
 
 ```markdown
-## CASE_01_潜台词理解
-用户输入：我今天面试结束之后特别难受。我知道自己发挥得不差。但我还是一直在想面试官那个奇怪的表情。
+---
+id: case_001
 
-## CASE_02_决策分析
-用户输入：我有两个工作。一个钱很多但发展路径不明确。一个钱少一点但技术成长更快。我不知道怎么选。
+category: understanding
 
-## CASE_03_文学性
-用户输入：描述一个人在暴风雨前看见远处海面的场景。不要限制字数。
+tags:
+  - emotion
+  - interview
+
+description:
+  测试模型是否能发现潜台词
+---
+
+我今天面试结束之后特别难受。
+
+我知道自己发挥得不差。
+
+但我还是一直在想面试官那个奇怪的表情。
 ```
+
+---
+
+### Supported Categories
+
+understanding
+
+decision
+
+emotion
+
+companionship
+
+writing
+
+creativity
+
+reflection
+
+long_conversation
+
+---
+
+# Feature 2
+
+Model Registry
+
+模型注册系统
+
+---
+
+Purpose
+
+统一管理待测试模型
+
+---
+
+models.yaml
+
+```yaml
+models:
+
+  - name: minimax3
+
+    provider: minimax
+
+    api_key_env: MINIMAX_API_KEY
+
+  - name: deepseek_v4
+
+    provider: deepseek
+
+    api_key_env: DEEPSEEK_API_KEY
+```
+
+---
+
+# Feature 3
+
+Batch Runner
+
+批量测试执行器
+
+---
+
+Command
+
+```bash
+python run.py
+```
+
+---
+
+Execution Flow
+
+读取所有 Case
+
+↓
+
+创建全新 Session
+
+↓
+
+调用模型
+
+↓
+
+保存回答
+
+↓
+
+生成结果目录
+
+---
+
+Important
+
+每个 Case 必须独立请求。
+
+禁止共享上下文。
+
+禁止共享历史记录。
+
+---
+
+Output
+
+results/
+
+2026-06-23/
+
+case_001/
+
+minimax3.md
+
+deepseek_v4.md
+
+---
+
+# Feature 4
+
+Blind Comparison Mode
+
+盲测模式
+
+---
+
+Purpose
+
+避免品牌偏见
+
+---
+
+生成：
+
+blind/
+
+case_001/
+
+response_A.md
+
+response_B.md
+
+mapping.json
+
+---
+
+展示时：
+
+用户只能看到
+
+Response A
+
+Response B
+
+不能看到模型名称
+
+---
+
+# Feature 5
+
+Human Evaluation Workspace
+
+人工评测工作区
+
+---
+
+Purpose
+
+帮助用户记录主观感受
+
+---
+
+evaluation.md
+
+```markdown
+# Case 001
+
+Winner:
+
+[ ]
+
+A
+
+[ ]
+
+B
+
+[ ]
+
+Tie
+
+---
+
+Understanding
+
+A: 8
+
+B: 6
+
+---
+
+Subtext
+
+A: 9
+
+B: 4
+
+---
+
+Humanity
+
+A: 8
+
+B: 7
+
+---
+
+Notes
+
+A发现了潜台词。
+
+B更像标准客服。
+```
+
+---
+
+# Feature 6
+
+Resonance Journal
+
+共鸣日志
+
+---
+
+Purpose
+
+记录用户最真实的体验
+
+---
+
+Example
+
+```markdown
+2026-06-23
+
+Case 003
+
+Response B让我停下来想了一会。
+
+它没有急着安慰我。
+
+而是在思考我为什么会在意那个表情。
+
+这种感觉很特别。
+```
+
+---
+
+设计理念：
+
+允许记录模糊感受。
+
+不强制量化。
+
+---
+
+# Feature 7
+
+Conversation Marathon
+
+长会话测试
+
+---
+
+Purpose
+
+测试长期陪伴能力
+
+---
+
+Directory
+
+marathons/
+
+career_choice/
+
+---
+
+Format
+
+turn_01.md
+
+turn_02.md
+
+turn_03.md
+
+...
+
+turn_20.md
+
+---
+
+Requirement
+
+同一 Session
+
+连续对话
+
+禁止重置上下文
+
+---
+
+# Evaluation Framework
+
+## Dimension 1
+
+Understanding
+
+是否理解表面问题
+
+---
+
+## Dimension 2
+
+Subtext Detection
+
+是否发现潜台词
+
+---
+
+## Dimension 3
+
+Humanity
+
+是否像真人
+
+---
+
+## Dimension 4
+
+Beauty
+
+语言是否有美感
+
+---
+
+## Dimension 5
+
+Curiosity
+
+是否愿意探索问题
+
+---
+
+## Dimension 6
+
+Companionability
+
+是否让用户愿意继续聊天
+
+---
+
+# Tech Stack
+
+Python 3.12
+
+LiteLLM
+
+Typer
+
+PyYAML
+
+Rich
+
+Markdown
+
+---
+
+# Future Roadmap
+
+V2
+
+Web UI
+
+Blind Arena
+
+Conversation Replay
+
+ELO Ranking
+
+Resonance Analytics
+
+---
+
+# Success Criteria
+
+用户能够在 30 分钟内完成：
+
+1. 运行多个模型测试
+
+2. 阅读盲测结果
+
+3. 完成人工评价
+
+4. 记录共鸣感受
+
+5. 得出适合自己的模型选择
+
+最终回答：
+
+“哪个模型最懂我？”
+
+而不是：
+
+“哪个模型最强？”
