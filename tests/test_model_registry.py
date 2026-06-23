@@ -68,6 +68,92 @@ class TestLoadModels:
             load_models(tmp_path / "models.yaml")
 
 
+class TestSecretDetection:
+    """Security check: `api_key_env` must be an env-var NAME, not a real key."""
+
+    def test_real_openai_style_key_rejected(self, tmp_path: Path) -> None:
+        (tmp_path / "models.yaml").write_text(
+            "models:\n"
+            "  - name: gpt4o\n"
+            "    provider: openai\n"
+            "    api_key_env: sk-abc123def456ghi789jkl012mno345pqr678stu901\n",
+            encoding="utf-8",
+        )
+        with pytest.raises(ModelRegistryError, match="looks like an actual API key"):
+            load_models(tmp_path / "models.yaml")
+
+    def test_anthropic_style_key_rejected(self, tmp_path: Path) -> None:
+        (tmp_path / "models.yaml").write_text(
+            "models:\n"
+            "  - name: claude\n"
+            "    provider: anthropic\n"
+            "    api_key_env: sk-ant-api03-verylongstringthatshouldnotbehere\n",
+            encoding="utf-8",
+        )
+        with pytest.raises(ModelRegistryError, match="looks like an actual API key"):
+            load_models(tmp_path / "models.yaml")
+
+    def test_github_pat_rejected(self, tmp_path: Path) -> None:
+        (tmp_path / "models.yaml").write_text(
+            "models:\n"
+            "  - name: m\n"
+            "    provider: p\n"
+            "    api_key_env: ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n",
+            encoding="utf-8",
+        )
+        with pytest.raises(ModelRegistryError, match="looks like an actual API key"):
+            load_models(tmp_path / "models.yaml")
+
+    def test_lowercase_value_rejected(self, tmp_path: Path) -> None:
+        (tmp_path / "models.yaml").write_text(
+            "models:\n"
+            "  - name: m\n"
+            "    provider: p\n"
+            "    api_key_env: my_secret_key_value\n",
+            encoding="utf-8",
+        )
+        with pytest.raises(ModelRegistryError, match="looks like an actual API key"):
+            load_models(tmp_path / "models.yaml")
+
+    def test_hyphenated_value_rejected(self, tmp_path: Path) -> None:
+        # An env var name can't contain hyphens. Anything with a hyphen is
+        # almost certainly a token or a value, not a name.
+        (tmp_path / "models.yaml").write_text(
+            "models:\n"
+            "  - name: m\n"
+            "    provider: p\n"
+            "    api_key_env: MY-SECRET-KEY\n",
+            encoding="utf-8",
+        )
+        with pytest.raises(ModelRegistryError, match="looks like an actual API key"):
+            load_models(tmp_path / "models.yaml")
+
+    def test_valid_env_var_name_accepted(self, tmp_path: Path) -> None:
+        # Sanity: legitimate env-var names still pass.
+        (tmp_path / "models.yaml").write_text(
+            "models:\n"
+            "  - name: minimax3\n"
+            "    provider: minimax\n"
+            "    api_key_env: MINIMAX_API_KEY_V2\n",
+            encoding="utf-8",
+        )
+        models = load_models(tmp_path / "models.yaml")
+        assert models[0].api_key_env == "MINIMAX_API_KEY_V2"
+
+    def test_name_field_not_subject_to_check(self, tmp_path: Path) -> None:
+        # The `name` field legitimately contains lowercase (e.g. "gpt-4o").
+        # Only `api_key_env` is checked.
+        (tmp_path / "models.yaml").write_text(
+            "models:\n"
+            "  - name: gpt-4o\n"
+            "    provider: openai\n"
+            "    api_key_env: OPENAI_API_KEY\n",
+            encoding="utf-8",
+        )
+        models = load_models(tmp_path / "models.yaml")
+        assert models[0].name == "gpt-4o"
+
+
 class TestResolveApiKey:
     def test_returns_value_when_set(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("TEST_KEY", "secret123")

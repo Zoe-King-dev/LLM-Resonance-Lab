@@ -34,12 +34,28 @@ python run.py journal note "Response B 让我停下来想了一会。"
 
 ## 使用真实模型
 
+### 1. 创建你的本地 `models.yaml`
+
+仓库里只有 `models.yaml.example` 模板（可入库）。把你的真实配置放到 `models.yaml`（已在 `.gitignore` 中）：
+
 ```bash
-# 设置 API Key（变量名需与 models.yaml 中的 api_key_env 一致）
+cp models.yaml.example models.yaml
+# 然后编辑 models.yaml，修改 name / provider 字段
+```
+
+> ⚠️ **绝对不要** 把 API Key 直接写在 `models.yaml` 里。`api_key_env` 字段是环境变量的**名字**（如 `MINIMAX_API_KEY`），真实 Key 通过 shell 注入。模型注册加载器会做硬性检查 —— 如果检测到字段值看起来像真实 Key（`sk-...`、过长、含小写或连字符），会直接拒绝启动。
+
+### 2. 设置 API Key
+
+```bash
+# 变量名必须与 models.yaml 中的 api_key_env 完全一致
 export MINIMAX_API_KEY=...
 export DEEPSEEK_API_KEY=...
+```
 
-# 不加 --mock 即调用真实模型
+### 3. 运行（不加 `--mock`）
+
+```bash
 python run.py run --model minimax3
 python run.py marathon career_choice --model minimax3
 ```

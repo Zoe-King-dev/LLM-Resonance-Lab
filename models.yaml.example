@@ -1,0 +1,23 @@
+# LLM Resonance Lab — Model Registry Template
+# ─────────────────────────────────────────────
+# Copy this file to `models.yaml` and edit your real configuration:
+#     cp models.yaml.example models.yaml
+#
+# `models.yaml` is .gitignored — your personal config stays local.
+# NEVER paste an actual API key into this file. The `api_key_env` field
+# must be the NAME of an environment variable (uppercase, underscores)
+# that holds the real key. The loader will refuse to start if it detects
+# what looks like a real key in this file.
+
+models:
+  # Replace with your real model. The `provider` field is passed to LiteLLM
+  # as the model-name prefix (e.g. "openai/gpt-4o").
+  - name: minimax3
+    provider: minimax
+    # The NAME of the env var that holds the real API key.
+    # Set it in your shell before running:  export MINIMAX_API_KEY=...
+    api_key_env: MINIMAX_API_KEY
+
+  - name: deepseek_v4
+    provider: deepseek
+    api_key_env: DEEPSEEK_API_KEY
