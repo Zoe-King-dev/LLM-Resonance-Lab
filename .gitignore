@@ -43,6 +43,7 @@ ENV/
 .env
 .env.local
 .env.*.local
+models.yaml
 
 # ────────────────────────────────────────────
 # IDE
