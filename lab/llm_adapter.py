@@ -41,7 +41,7 @@ class CompletionResult:
 MOCK_RESPONSES: dict[str, str] = {
     "minimax3": (
         "[MOCK/minimax3] 你难受的点似乎不是面试结果，"
-        "而是那个表情意味着什么。这种"潜台词识别"是 MiniMax 模型的优势。"
+        "而是那个表情意味着什么。这种“潜台词识别”是 MiniMax 模型的优势。"
     ),
     "deepseek_v4": (
         "[MOCK/deepseek_v4] 别担心，你已经很优秀了。"

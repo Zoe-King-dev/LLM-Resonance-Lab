@@ -140,7 +140,6 @@ def run_batch(
         task = progress.add_task("Batch run (A 组)", total=total)
         for case in cases:
             case_dir = out_dir / case.id
-            case_dir.mkdir(parents=True, exist_ok=True)
             for model in models:
                 progress.update(task, description=f"A 组: {case.id} × {model.name}")
                 result = _run_single(
@@ -154,6 +153,7 @@ def run_batch(
                     summary.skipped += 1
                     summary.failed_pairs.append((case.id, model.name))
                 else:
+                    case_dir.mkdir(parents=True, exist_ok=True)
                     out_path = case_dir / f"{model.name}.md"
                     out_path.write_text(
                         _format_response_file(case, model, result.text, timestamp),

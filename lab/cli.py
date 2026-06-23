@@ -130,7 +130,7 @@ def main(
         ctx.invoke(run_cmd)
 
 
-@app.command()
+@app.command(name="run")
 def run_cmd(
     mock: bool = typer.Option(False, "--mock", help="Use canned responses."),
     mock_file: Optional[Path] = typer.Option(
@@ -242,7 +242,7 @@ def journal_note_cmd(
     success(f"Note appended to {path}")
 
 
-@app.command()
+@app.command(name="marathon")
 def marathon_cmd(
     scenario: str = typer.Argument(..., help="Marathon scenario name, e.g. career_choice."),
     model: str = typer.Option(..., "--model", help="Model name (required)."),
@@ -269,7 +269,7 @@ def marathon_cmd(
     )
 
 
-@app.command()
+@app.command(name="models")
 def models_cmd() -> None:
     """List configured models and their API key status."""
     paths = _get_paths()
@@ -294,7 +294,7 @@ def models_cmd() -> None:
     console.print(table)
 
 
-@app.command()
+@app.command(name="cases")
 def cases_cmd() -> None:
     """List all available cases."""
     paths = _get_paths()

@@ -82,18 +82,20 @@ class TestArchitecturalSeparation:
 
     def test_batch_runner_does_not_import_marathon(self) -> None:
         # This catches accidental reuse of helper code that would let A 组
-        # leak into B 组 (or vice versa).
+        # leak into B 组 (or vice versa). We check the actual import
+        # statements, not just any textual reference.
         import lab.batch_runner as br
 
         src = inspect.getsource(br)
-        assert "marathon_runner" not in src
+        # `import` statements (not docstring/comment mentions):
+        assert "import lab.marathon" not in src
         assert "from lab.marathon" not in src
-        assert "import marathon" not in src
+        assert "from lab import marathon" not in src
 
     def test_marathon_runner_does_not_import_batch(self) -> None:
         import lab.marathon_runner as mr
 
         src = inspect.getsource(mr)
-        assert "batch_runner" not in src
+        assert "import lab.batch" not in src
         assert "from lab.batch" not in src
-        assert "import batch" not in src
+        assert "from lab import batch" not in src

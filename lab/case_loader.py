@@ -56,8 +56,10 @@ def parse_frontmatter(text: str) -> tuple[dict[str, Any], str]:
 
     yaml_block = after_open[:close_idx]
     body = after_open[close_idx + 1 + len(_FENCE):]
-    # Strip a single leading newline so the body starts cleanly.
-    if body.startswith("\n"):
+    # Strip the newline at the end of the `---` line and one optional blank line.
+    if body.startswith("\n\n"):
+        body = body[2:]
+    elif body.startswith("\n"):
         body = body[1:]
 
     try:
