@@ -40,7 +40,9 @@ from lab.model_registry import (
     ModelEntry,
     ModelRegistryError,
     load_models,
+    resolve_api_base,
     resolve_api_key,
+    resolve_model_name,
 )
 
 app = typer.Typer(
@@ -285,12 +287,33 @@ def models_cmd() -> None:
     table = Table(title="Configured Models")
     table.add_column("Name", style="cyan")
     table.add_column("Provider", style="magenta")
-    table.add_column("API Key Env", style="yellow")
-    table.add_column("Status", style="green")
+    table.add_column("API Model", style="white")
+    table.add_column("API Key", style="yellow")
+    table.add_column("API Base", style="yellow")
     for m in models:
         key = resolve_api_key(m)
-        status = "[green]set[/green]" if key else "[red]missing[/red]"
-        table.add_row(m.name, m.provider, m.api_key_env, status)
+        key_status = "[green]set[/green]" if key else "[red]missing[/red]"
+        api_base = resolve_api_base(m)
+        if m.api_base_env:
+            base_status = (
+                f"[green]set[/green] ({api_base})" if api_base else "[red]missing[/red]"
+            )
+        else:
+            base_status = "[dim]default[/dim]"
+        # `API Model` shows the actual name sent to the vendor (model_name if
+        # set, else the friendly alias). Annotate if they differ.
+        api_model = resolve_model_name(m)
+        if m.model_name and m.model_name != m.name:
+            api_model_display = f"{api_model} [dim](alias: {m.name})[/dim]"
+        else:
+            api_model_display = api_model
+        table.add_row(
+            m.name,
+            m.provider,
+            api_model_display,
+            f"{m.api_key_env}={key_status}",
+            base_status,
+        )
     console.print(table)
 
 

@@ -10,6 +10,7 @@ Why this module exists:
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -17,7 +18,12 @@ from typing import Any
 import yaml
 
 from lab.config import DEFAULT_TEMPERATURE
-from lab.model_registry import ModelEntry, resolve_api_key
+from lab.model_registry import (
+    ModelEntry,
+    resolve_api_base,
+    resolve_api_key,
+    resolve_model_name,
+)
 
 try:
     import litellm  # type: ignore[import-untyped]
@@ -137,16 +143,32 @@ def complete(
             "litellm is not installed. Run: pip install -r requirements.txt"
         )
 
-    _check_api_key(model)
+    api_key = _check_api_key(model)
 
     # LiteLLM accepts provider-prefixed model names like "openai/gpt-4o".
-    # We trust the registry's `provider` field for that prefix.
-    litellm_model = f"{model.provider}/{model.name}"
+    # `resolve_model_name` falls back to `model.name` if `model_name` is unset,
+    # so a friendly alias (`minimax3`) can co-exist with a real API name
+    # (`MiniMax-M3`) configured via the `model_name` field.
+    litellm_model = f"{model.provider}/{resolve_model_name(model)}"
 
-    response = litellm.completion(
-        model=litellm_model,
-        messages=messages,
-        temperature=temperature,
-    )
+    # We MUST pass the resolved api_key explicitly: LiteLLM's default for
+    # `provider: openai` (and any other provider) is to look up
+    # `<PROVIDER>_API_KEY` from the environment. Since our env var name is
+    # user-defined (e.g. `MINIMAX_API_KEY`), we'd get an "OPENAI_API_KEY
+    # not set" error if we relied on the default.
+    completion_kwargs: dict[str, Any] = {
+        "model": litellm_model,
+        "messages": messages,
+        "temperature": temperature,
+        "api_key": api_key,
+    }
+    # Optional: route the call to a custom API base URL (e.g. an OpenAI-
+    # compatible vendor hosted on a different host). When the env var is
+    # unset, we don't pass `api_base` and LiteLLM uses its built-in default.
+    api_base = resolve_api_base(model)
+    if api_base:
+        completion_kwargs["api_base"] = api_base
+
+    response = litellm.completion(**completion_kwargs)
     text = response.choices[0].message.content or ""
     return CompletionResult(text=text, model=model.name, raw=response)

@@ -11,7 +11,9 @@ from lab.model_registry import (
     ModelEntry,
     ModelRegistryError,
     load_models,
+    resolve_api_base,
     resolve_api_key,
+    resolve_model_name,
 )
 
 
@@ -168,3 +170,114 @@ class TestResolveApiKey:
         monkeypatch.setenv("TEST_KEY", "")
         entry = ModelEntry(name="m", provider="p", api_key_env="TEST_KEY")
         assert resolve_api_key(entry) is None
+
+
+class TestOptionalFields:
+    """model_name and api_base_env are optional; both default to None."""
+
+    def test_model_name_optional(self, tmp_path: Path) -> None:
+        (tmp_path / "models.yaml").write_text(
+            "models:\n  - name: m\n    provider: p\n    api_key_env: K\n",
+            encoding="utf-8",
+        )
+        models = load_models(tmp_path / "models.yaml")
+        assert models[0].model_name is None
+        assert models[0].api_base_env is None
+
+    def test_model_name_loaded(self, tmp_path: Path) -> None:
+        (tmp_path / "models.yaml").write_text(
+            "models:\n"
+            "  - name: friendly_alias\n"
+            "    provider: openai\n"
+            "    api_key_env: K\n"
+            "    model_name: gpt-4o\n",
+            encoding="utf-8",
+        )
+        models = load_models(tmp_path / "models.yaml")
+        assert models[0].model_name == "gpt-4o"
+
+    def test_api_base_env_loaded(self, tmp_path: Path) -> None:
+        (tmp_path / "models.yaml").write_text(
+            "models:\n"
+            "  - name: m\n"
+            "    provider: openai\n"
+            "    api_key_env: K\n"
+            "    api_base_env: CUSTOM_BASE\n",
+            encoding="utf-8",
+        )
+        models = load_models(tmp_path / "models.yaml")
+        assert models[0].api_base_env == "CUSTOM_BASE"
+
+    def test_api_base_env_must_be_env_name_not_url(self, tmp_path: Path) -> None:
+        # If someone pastes a raw URL into api_base_env, refuse it.
+        (tmp_path / "models.yaml").write_text(
+            "models:\n"
+            "  - name: m\n"
+            "    provider: openai\n"
+            "    api_key_env: K\n"
+            "    api_base_env: https://api.example.com/v1\n",
+            encoding="utf-8",
+        )
+        with pytest.raises(ModelRegistryError, match="looks like an actual API key"):
+            load_models(tmp_path / "models.yaml")
+
+    def test_api_base_env_empty_string_rejected(self, tmp_path: Path) -> None:
+        (tmp_path / "models.yaml").write_text(
+            "models:\n"
+            "  - name: m\n"
+            "    provider: openai\n"
+            "    api_key_env: K\n"
+            "    api_base_env: ''\n",
+            encoding="utf-8",
+        )
+        with pytest.raises(ModelRegistryError, match="non-empty string"):
+            load_models(tmp_path / "models.yaml")
+
+
+class TestResolveApiBase:
+    def test_returns_value_when_set(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("CUSTOM_BASE", "https://api.example.com/v1")
+        entry = ModelEntry(
+            name="m", provider="p", api_key_env="K", api_base_env="CUSTOM_BASE"
+        )
+        assert resolve_api_base(entry) == "https://api.example.com/v1"
+
+    def test_returns_none_when_unset(self) -> None:
+        entry = ModelEntry(
+            name="m",
+            provider="p",
+            api_key_env="K",
+            api_base_env="DEFINITELY_NOT_SET_XYZ",
+        )
+        assert resolve_api_base(entry) is None
+
+    def test_returns_none_when_field_missing(self) -> None:
+        entry = ModelEntry(name="m", provider="p", api_key_env="K")
+        assert resolve_api_base(entry) is None
+
+    def test_returns_none_for_empty_string(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("CUSTOM_BASE", "")
+        entry = ModelEntry(
+            name="m", provider="p", api_key_env="K", api_base_env="CUSTOM_BASE"
+        )
+        assert resolve_api_base(entry) is None
+
+
+class TestResolveModelName:
+    def test_falls_back_to_name_when_model_name_unset(self) -> None:
+        entry = ModelEntry(name="friendly", provider="p", api_key_env="K")
+        assert resolve_model_name(entry) == "friendly"
+
+    def test_uses_model_name_when_set(self) -> None:
+        entry = ModelEntry(
+            name="friendly", provider="p", api_key_env="K", model_name="real-name"
+        )
+        assert resolve_model_name(entry) == "real-name"
+
+    def test_empty_model_name_falls_back_to_name(self) -> None:
+        # Defensive: even if model_name is somehow an empty string, fall back.
+        # (The loader rejects empty strings, but this guards future code.)
+        entry = ModelEntry(
+            name="friendly", provider="p", api_key_env="K", model_name=""
+        )
+        assert resolve_model_name(entry) == "friendly"

@@ -30,9 +30,20 @@ class ModelEntry:
     name: str
     provider: str
     api_key_env: str
+    # Optional: the ACTUAL model name sent to the vendor's API. When unset,
+    # `name` is sent as-is. Useful when you want a friendly display alias
+    # (`minimax3`) but the vendor's API expects a different identifier
+    # (`MiniMax-M3`).
+    model_name: str | None = None
+    # Optional: the NAME of an env var holding a custom API base URL.
+    # Useful for OpenAI-compatible providers hosted on a non-default endpoint
+    # (e.g. `https://platform.minimaxi.com/v1`). When unset, LiteLLM uses
+    # its built-in default for the given `provider`.
+    api_base_env: str | None = None
 
 
 _REQUIRED_FIELDS = ("name", "provider", "api_key_env")
+_OPTIONAL_FIELDS = ("model_name", "api_base_env")
 
 # POSIX-style env var name: starts with letter or underscore, then alphanum
 # or underscore, all uppercase by convention. Anything that doesn't match
@@ -110,6 +121,21 @@ def load_models(path: Path) -> list[ModelEntry]:
         # Security: `api_key_env` must be the NAME of an env var, not the key
         # itself. This guards against accidental key-in-yaml leaks.
         _validate_field_is_env_name("api_key_env", item["api_key_env"], path, idx)
+        # Optional fields
+        model_name: str | None = item.get("model_name")
+        if model_name is not None:
+            if not isinstance(model_name, str) or not model_name.strip():
+                raise ModelRegistryError(
+                    f"{path}: models[{idx}].model_name must be a non-empty string."
+                )
+        api_base_env: str | None = item.get("api_base_env")
+        if api_base_env is not None:
+            if not isinstance(api_base_env, str) or not api_base_env.strip():
+                raise ModelRegistryError(
+                    f"{path}: models[{idx}].api_base_env must be a non-empty string."
+                )
+            # If provided, it must also be an env-var name, not a raw URL.
+            _validate_field_is_env_name("api_base_env", api_base_env, path, idx)
         if item["name"] in seen_names:
             raise ModelRegistryError(
                 f"{path}: duplicate model name {item['name']!r}."
@@ -120,6 +146,8 @@ def load_models(path: Path) -> list[ModelEntry]:
                 name=item["name"],
                 provider=item["provider"],
                 api_key_env=item["api_key_env"],
+                model_name=model_name,
+                api_base_env=api_base_env,
             )
         )
     return entries
@@ -129,3 +157,24 @@ def resolve_api_key(entry: ModelEntry) -> str | None:
     """Return the API key for a model, or None if the env var is not set."""
     value = os.environ.get(entry.api_key_env)
     return value if value else None
+
+
+def resolve_api_base(entry: ModelEntry) -> str | None:
+    """Return the custom API base URL for a model, or None.
+
+    - Returns None if the model has no `api_base_env` configured.
+    - Returns None if the env var is unset or empty.
+    - Returns the URL string if the env var is set to a non-empty value.
+    """
+    if not entry.api_base_env:
+        return None
+    value = os.environ.get(entry.api_base_env)
+    return value if value else None
+
+
+def resolve_model_name(entry: ModelEntry) -> str:
+    """Return the model name to send to the vendor's API.
+
+    Falls back to `entry.name` if no explicit `model_name` is configured.
+    """
+    return entry.model_name if entry.model_name else entry.name
